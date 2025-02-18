@@ -119,9 +119,8 @@ if args.model == 'cav-mae-ft':
     # Head 부분 여기로 옮김
     audio_model.mlp_head = torch.nn.Sequential(
         torch.nn.Linear(768, 256),
-        torch.nn.LayerNorm(256),
-        torch.nn.GELU(),
-        torch.nn.Dropout(0.1),
+        torch.nn.ReLU(),
+        torch.nn.Dropout(0.3),
         torch.nn.Linear(256, 1),
         torch.nn.Sigmoid()
     )
