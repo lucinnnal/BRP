@@ -1,0 +1,11 @@
+myenv/
+src/preprocess/audio
+src/preprocess/video
+src/preprocess/frames
+src/*.pth
+*.png
+.DS_Store
+Thumbs.db
+src/__pycache__/
+src/utilities/__pycache__/
+src/models/__pycache__/
