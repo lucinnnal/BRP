@@ -111,7 +111,7 @@ class AudiosetDataset(Dataset):
         # set the frame to use in the eval mode, default value for training is -1 which means random frame
         self.frame_use = self.audio_conf.get('frame_use', -1)
         # by default, 10 frames are used
-        self.total_frame = self.audio_conf.get('total_frame', 10)
+        self.total_frame = self.audio_conf.get('total_frame', 60)
         print('now use frame {:d} from total {:d} frames'.format(self.frame_use, self.total_frame))
 
         # by default, all models use 224*224, other resolutions are not tested
@@ -211,12 +211,12 @@ class AudiosetDataset(Dataset):
             else:
                 frame_idx = self.frame_use
         else:
-            frame_idx = random.randint(0, 9)
+            frame_idx = random.randint(1, 60)
 
-        while os.path.exists(video_path + '/frame_' + str(frame_idx) + '/' + video_id + '.jpg') == False and frame_idx >= 1:
+        while os.path.exists(video_path + 'frame_det_00_0000' + (f"0{str(frame_idx)}" if frame_idx % 10 == frame_idx else str(frame_idx)) + '.jpg') == False and frame_idx >= 1:
             print('frame {:s} {:d} does not exist'.format(video_id, frame_idx))
             frame_idx -= 1
-        out_path = video_path + '/frame_' + str(frame_idx) + '/' + video_id + '.jpg'
+        out_path = video_path + 'frame_det_00_0000' + (f"0{str(frame_idx)}" if frame_idx % 10 == frame_idx else str(frame_idx)) + '.jpg'
         #print(out_path)
         return out_path
 
@@ -274,7 +274,7 @@ class AudiosetDataset(Dataset):
 
         # normalize the input for both training and test
         if self.skip_norm == False:
-            fbank = (fbank - self.norm_mean) / (self.norm_std) # 이 부분이 좀 마음에 걸림
+            fbank = (fbank - self.norm_mean) / (self.norm_std) 
         # skip normalization the input ONLY when you are trying to get the normalization stats.
         else:
             pass
@@ -290,6 +290,7 @@ class AudiosetDataset(Dataset):
         return self.num_samples
     
 if __name__=="__main__":
+    """
     audio_path = "/Users/kipyokim/Desktop/cav-mae/src/preprocess/audio/4862_1060_IWL_FEA_XX_stress_0.90.wav"
 
     # 파일 존재 여부 확인
@@ -303,13 +304,27 @@ if __name__=="__main__":
     except Exception as e:
         print("오디오 로드 실패:", e)
     audio_conf = {'num_mel_bins': 128, 'target_length': 1024, 'freqm': 0, 'timem': 0, 'mixup': 0, 'dataset': 'train_dataset',
-              'mode': 'eval', 'mean': -5.081, 'std': 4.4849, 'noise': False, 'im_res': 224, 'frame_use': 5}
+              'mode': 'eval', 'mean': -5.081, 'std': 4.4849, 'noise': False, 'im_res': 224, 'frame_use': 30}
     
     train_dataset = AudiosetDataset("./preprocess/datafiles/train_json.json", audio_conf)
 
-    mel_spec, image, label = train_dataset[0]
+    mel_spec, image, label = train_dataset[345]
 
     print(f"mel_spec shape: {mel_spec.size()}")
     print(f"image shape: {image.size()}")
     print(f"label size : {label.size()}")
     print(f"label value: {label}")
+    """
+    # Dataloader
+    audio_conf = {'num_mel_bins': 128, 'target_length': 1024, 'freqm': 0, 'timem': 0, 'mixup': 0, 'dataset': 'train_dataset',
+              'mode': 'eval', 'mean': -5.081, 'std': 4.4849, 'noise': False, 'im_res': 224, 'frame_use': 30}
+    
+    train_loader = torch.utils.data.DataLoader(
+        AudiosetDataset("/Users/kipyokim/Desktop/cav-mae/src/preprocess/datafiles/train_json.json", label_csv='', audio_conf=audio_conf),
+        batch_size=8, shuffle=True, num_workers=0, pin_memory=True, drop_last=True)
+    
+    spec, images, labels = next(iter(train_loader))
+
+    print(spec.shape)
+    print(images.shape)
+    print(labels.shape)

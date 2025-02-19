@@ -2,6 +2,7 @@ myenv/
 src/preprocess/audio
 src/preprocess/video
 src/preprocess/frames
+src/preprocess/face_aligned
 src/*.pth
 *.png
 .DS_Store
