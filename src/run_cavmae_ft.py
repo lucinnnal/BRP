@@ -149,10 +149,10 @@ train(model, train_loader, val_loader, args)
 
 # average the model weights of checkpoints, note it is not ensemble, and does not increase computational overhead
 def wa_model(exp_dir, start_epoch, end_epoch):
-    sdA = torch.load(exp_dir + '/models/model.' + str(start_epoch) + '.pth', map_location='cpu')
+    sdA = torch.load(exp_dir + '/models/audio_model.' + str(start_epoch) + '.pth', map_location='cpu')
     model_cnt = 1
     for epoch in range(start_epoch+1, end_epoch+1):
-        sdB = torch.load(exp_dir + '/models/model.' + str(epoch) + '.pth', map_location='cpu')
+        sdB = torch.load(exp_dir + '/models/audio_model.' + str(epoch) + '.pth', map_location='cpu')
         for key in sdA:
             sdA[key] = sdA[key] + sdB[key]
         model_cnt += 1
@@ -170,7 +170,7 @@ if args.wa == True:
     torch.save(sdA, args.exp_dir + "/models/model_wa.pth")
 else:
     # if no wa, use the best checkpint
-    sdA = torch.load(args.exp_dir + '/models/best_model.pth', map_location='cpu')
+    sdA = torch.load(args.exp_dir + '/models/best_audio_model.pth', map_location='cpu')
 msg = model.load_state_dict(sdA, strict=True)
 print(msg)
 model.eval()
@@ -189,7 +189,7 @@ if args.skip_frame_agg == True:
         cur_res = stats[0]['acc']
         print('acc is {:.4f}'.format(cur_res))
     elif args.metrics == 'mse':
-        print(f"mse is {stats['mse']}")
+        print(f"mse is {stats['mse']}, mae is {stats['mae']}, r2 score is {stats['r2']}")
     elif args.metrics == 'mae':
         print(f"mae is {stats['mae']}")
     elif args.metrics == 'r2':
