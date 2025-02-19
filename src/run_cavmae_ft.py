@@ -115,14 +115,12 @@ if args.data_eval != None:
 
 if args.model == 'cav-mae-ft':
     print('finetune a cav-mae model with 11 modality-specific layers and 1 modality-sharing layers')
-    audio_model = models.CAVMAEFT(label_dim=args.n_class, modality_specific_depth=11)
+    model = models.CAVMAEFT(label_dim=args.n_class, modality_specific_depth=11)
     # Head 부분 여기로 옮김
-    audio_model.mlp_head = torch.nn.Sequential(
+    model.mlp_head = torch.nn.Sequential(
         torch.nn.Linear(768, 256),
         torch.nn.ReLU(),
-        torch.nn.Dropout(0.3),
-        torch.nn.Linear(256, 1),
-        torch.nn.Sigmoid()
+        torch.nn.Linear(256, 1)
     )
 else:
     raise ValueError('model not supported')
@@ -137,24 +135,24 @@ if args.pretrain_path != 'None':
 
     # GPU 사용가능한 환경에서만 DataParallel로 감싸 주기
     if torch.cuda.device_count() > 1 and torch.cuda.is_available():
-        if not isinstance(audio_model, torch.nn.DataParallel):
-            audio_model = torch.nn.DataParallel(audio_model)
+        if not isinstance(model, torch.nn.DataParallel):
+            model = torch.nn.DataParallel(model)
 
     mdl_weight = {k: v for k, v in mdl_weight.items() if "mlp_head" not in k}
-    miss, unexpected = audio_model.load_state_dict(mdl_weight, strict=False)
+    miss, unexpected = model.load_state_dict(mdl_weight, strict=False)
     print('now load cav-mae pretrained weights from ', args.pretrain_path)
     print(miss, unexpected)
 
 
 print('Now starting training for {:d} epochs.'.format(args.n_epochs))
-train(audio_model, train_loader, val_loader, args)
+train(model, train_loader, val_loader, args)
 
 # average the model weights of checkpoints, note it is not ensemble, and does not increase computational overhead
 def wa_model(exp_dir, start_epoch, end_epoch):
-    sdA = torch.load(exp_dir + '/models/audio_model.' + str(start_epoch) + '.pth', map_location='cpu')
+    sdA = torch.load(exp_dir + '/models/model.' + str(start_epoch) + '.pth', map_location='cpu')
     model_cnt = 1
     for epoch in range(start_epoch+1, end_epoch+1):
-        sdB = torch.load(exp_dir + '/models/audio_model.' + str(epoch) + '.pth', map_location='cpu')
+        sdB = torch.load(exp_dir + '/models/model.' + str(epoch) + '.pth', map_location='cpu')
         for key in sdA:
             sdA[key] = sdA[key] + sdB[key]
         model_cnt += 1
@@ -165,17 +163,17 @@ def wa_model(exp_dir, start_epoch, end_epoch):
 
 # evaluate with multiple frames
 if torch.cuda.device_count() > 1 and torch.cuda.is_available():
-    if not isinstance(audio_model, torch.nn.DataParallel):
-        audio_model = torch.nn.DataParallel(audio_model)
+    if not isinstance(model, torch.nn.DataParallel):
+        model = torch.nn.DataParallel(model)
 if args.wa == True:
     sdA = wa_model(args.exp_dir, start_epoch=args.wa_start, end_epoch=args.wa_end)
-    torch.save(sdA, args.exp_dir + "/models/audio_model_wa.pth")
+    torch.save(sdA, args.exp_dir + "/models/model_wa.pth")
 else:
     # if no wa, use the best checkpint
-    sdA = torch.load(args.exp_dir + '/models/best_audio_model.pth', map_location='cpu')
-msg = audio_model.load_state_dict(sdA, strict=True)
+    sdA = torch.load(args.exp_dir + '/models/best_model.pth', map_location='cpu')
+msg = model.load_state_dict(sdA, strict=True)
 print(msg)
-audio_model.eval()
+model.eval()
 
 # skil multi-frame evaluation, for audio-only model
 if args.skip_frame_agg == True:
@@ -183,7 +181,7 @@ if args.skip_frame_agg == True:
     val_loader = torch.utils.data.DataLoader(
         dataloader.AudiosetDataset(args.data_val, label_csv=args.label_csv, audio_conf=val_audio_conf),
         batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
-    stats, audio_output, target = validate(audio_model, val_loader, args, output_pred=True)
+    stats, audio_output, target = validate(model, val_loader, args, output_pred=True)
     if args.metrics == 'mAP':
         cur_res = np.mean([stat['AP'] for stat in stats])
         print('mAP is {:.4f}'.format(cur_res))
@@ -206,7 +204,7 @@ else:
         val_loader = torch.utils.data.DataLoader(
             dataloader.AudiosetDataset(args.data_val, label_csv=args.label_csv, audio_conf=val_audio_conf),
             batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
-        stats, audio_output, target = validate(audio_model, val_loader, args, output_pred=True)
+        stats, audio_output, target = validate(model, val_loader, args, output_pred=True)
         print(audio_output.shape)
         if args.metrics == 'acc':
             audio_output = torch.nn.functional.softmax(audio_output.float(), dim=-1)
