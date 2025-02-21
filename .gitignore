@@ -12,3 +12,4 @@ src/utilities/__pycache__/
 src/models/__pycache__/
 result/*.pth
 result/*.pkl
+stress_fusionmae.pdf
